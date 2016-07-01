@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ToolbarSearchViewDemo</string>
+    <string name="search_title">输入号码查找</string>
+</resources>
