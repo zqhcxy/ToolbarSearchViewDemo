@@ -10,12 +10,15 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.github.zqhcxy.toolbarsearchviewdemo.R;
+import com.github.zqhcxy.toolbarsearchviewdemo.inf.SuggesstionAdapterInf;
 
 /**
  * Created by zqh-pc on 2016/6/30.
  */
 public class SuggestionAdapter extends CursorRecyclerAdapter<SuggestionAdapter.ViewHolder> {
     private LayoutInflater mInflator;
+    private String queryText;
+    private SuggesstionAdapterInf suggestionAdapterInf;
 
     /**
      * Recommended constructor.
@@ -30,6 +33,20 @@ public class SuggestionAdapter extends CursorRecyclerAdapter<SuggestionAdapter.V
         super(context, c, FLAG_REGISTER_CONTENT_OBSERVER);
         mInflator = LayoutInflater.from(context);
     }
+
+//    public interface SuggestionAdapterInf {
+//        void onItemClick(View v, String[] str);
+//
+//        boolean onItemLongClcik(View v, String[] str);
+//    }
+    public void setSuggestionAdapterInf(SuggesstionAdapterInf inf) {
+        suggestionAdapterInf = inf;
+    }
+
+    public void setQueryText(String quertstr) {
+        queryText = quertstr;
+    }
+
 
     @Override
     public void bindViewHolder(SuggestionAdapter.ViewHolder holder, Context context, Cursor cursor) {

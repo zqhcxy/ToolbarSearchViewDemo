@@ -16,10 +16,16 @@ import android.view.MenuItem;
 
 import com.github.zqhcxy.toolbarsearchviewdemo.lib.MyMaterialSearchView;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
 
     private Toolbar my_toolbar;
     private MyMaterialSearchView mysearch_view;
+
+    private List<String> queryDatas;
+    private List<String> oldQueryDatas=new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,6 +33,18 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         findView();
+
+        queryDatas=new ArrayList<>();
+        queryDatas.add("A");
+        queryDatas.add("BBBBBBBB");
+        queryDatas.add("CCCCCCCC");
+        queryDatas.add("DDDDDDDD");
+        queryDatas.add("11111111");
+        queryDatas.add("22222222");
+        queryDatas.add("1A2B3A4D");
+        queryDatas.add("2A3B4C5D");
+        queryDatas.add("3A4B5C6D");
+
     }
 
     private void findView() {
@@ -55,11 +73,27 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onQueryTextChange(String newText) {
                 if(TextUtils.isEmpty(newText)){
-                    mysearch_view.setSuggestionsCursor(null);
+//                    mysearch_view.setSuggestionsCursor(null,null);
+                    oldQueryDatas.clear();
+                    mysearch_view.setSuggetionsBaseAdapter(null,null);
                 }else {
-                    mysearch_view.setSuggestionsCursor(getCursor(null));
+                    //这个是测试显示而已，纯粹打印本地图库图片地址。
+//                    mysearch_view.setSuggestionsCursor(getCursor(null),null);
+                    List<String> lists=new ArrayList<String>();
+                    List<String> searchdata;
+                    if(oldQueryDatas.size()>0){
+                        searchdata=oldQueryDatas;
+                    }else{
+                        searchdata=queryDatas;
+                    }
+                    for(String str:searchdata){
+                        if(str.indexOf(newText)!=-1){
+                            lists.add(str);
+                        }
+                    }
+                    oldQueryDatas=lists;
+                    mysearch_view.setSuggetionsBaseAdapter(lists,newText);
                 }
-
                 return true;
             }
         });

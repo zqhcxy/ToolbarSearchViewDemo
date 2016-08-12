@@ -25,17 +25,30 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.github.zqhcxy.toolbarsearchviewdemo.R;
+import com.github.zqhcxy.toolbarsearchviewdemo.adapter.CursorRecyclerAdapter;
+import com.github.zqhcxy.toolbarsearchviewdemo.adapter.MaterialSearchBaseAdapter;
+import com.github.zqhcxy.toolbarsearchviewdemo.adapter.SuggestinRecyclerAdapter;
 import com.github.zqhcxy.toolbarsearchviewdemo.adapter.SuggestionAdapter;
+import com.github.zqhcxy.toolbarsearchviewdemo.inf.SuggesstionAdapterInf;
 import com.github.zqhcxy.toolbarsearchviewdemo.utils.AnimationUtil;
+
+import java.util.List;
 
 /**
  * 自定义SearchVoew
+ *
+ * <p>a、自定义的布局，有一个默认的Suggestionadapter，adapter只适应CursorRecyclerAdapter，RecyclerView的adapter。
+ * <p>b、可以适应默认的适配器，默认的适配器是一个头像和两行textview的视图，使用的灵活性小，调用方式是传入一个数据源cursor就行。
+ * <p>c、也可以自定义Aadpter，调用方式就是传入自定义的adapter，
  * <p>Created by zqh-pc on 2016/6/29.
  */
 public class MyMaterialSearchView extends FrameLayout implements Filter.FilterListener, View.OnClickListener {
 
-    public static final int RCY_VERTICAL=0;
-    public static final int RCY_HORIZONTAL=1;
+    public static final int RCY_VERTICAL = 0;
+    public static final int RCY_HORIZONTAL = 1;
+
+    public static final int SUG_CURSOR = 0;
+    public static final int SUG_BASE = 1;
 
     private Context mContext;
 
@@ -79,7 +92,11 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
     /**
      * suggestion的适配器
      */
-    private SuggestionAdapter mAdapter;
+    private CursorRecyclerAdapter mAdapter;
+    /**
+     * suggestion的非Cursordapter
+     */
+    private MaterialSearchBaseAdapter mBaseAdapter;
     /**
      * 外部打界面的item
      */
@@ -104,9 +121,12 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
     private boolean mClearingFocus;
 
     private boolean isShowVoice = false;
-
+    /**
+     * 上一个查找字段
+     */
     private CharSequence oldQueryText;
 
+    private int suggestionType;
 
     public MyMaterialSearchView(Context context) {
         this(context, null);
@@ -201,13 +221,13 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
      * 设置recyclerView显示样式横竖
      */
     public void setRecyViewHV(int type) {
-        if(type==RCY_VERTICAL){
+        if (type == RCY_VERTICAL) {
             LinearLayoutManager layoutManager = new LinearLayoutManager(mContext);
-            layoutManager.setStackFromEnd(true);
+            layoutManager.setStackFromEnd(false);
             suggestion_rcy.setLayoutManager(layoutManager);
-        }else if(type==RCY_HORIZONTAL){
+        } else if (type == RCY_HORIZONTAL) {
             LinearLayoutManager layoutManager = new LinearLayoutManager(mContext);
-            layoutManager.setStackFromEnd(true);
+            layoutManager.setStackFromEnd(false);
             suggestion_rcy.setLayoutManager(layoutManager);
         }
 
@@ -285,10 +305,10 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
             setShowVoiceBtn(false);
         }
 
-        if (mOnQueryTextListener != null && TextUtils.equals(newText, oldQueryText)) {
+        if (mOnQueryTextListener != null && !TextUtils.equals(newText, oldQueryText)) {
             mOnQueryTextListener.onQueryTextChange(newText.toString());
         }
-        oldQueryText = newText;
+        oldQueryText = newText.toString();
     }
 
     /**
@@ -309,19 +329,67 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
     }
 
 
-    public void setSuggestionsCursor(Cursor cursor) {
-        if(mAdapter==null){
+    /**
+     * 传入建议数据源。
+     * <p> 这个Cursor，是以官方的suggestion的样式生成的列表。这里有用的地方是两个参数分别是：suggest_text_1；suggest_text_2
+     *
+     * @param cursor
+     * @param querystr 当前搜索的字段
+     */
+    public void setSuggestionsCursor(Cursor cursor,String querystr) {
+        if (mAdapter == null) {
+            suggestionType=SUG_CURSOR;
             mAdapter = new SuggestionAdapter(mContext, cursor);
+            ((SuggestionAdapter) mAdapter).setQueryText(querystr);
             suggestion_rcy.setAdapter(mAdapter);
-        }else
-        {
+        } else {
+            ((SuggestionAdapter) mAdapter).setQueryText(querystr);
             mAdapter.changeCursor(cursor);
         }
-            showSuggestions();
+        suggestion_rcy.scrollToPosition(0);
+        showSuggestions();
+    }
+
+    public void setSuggetionsBaseAdapter(MaterialSearchBaseAdapter baseAdapter){
+        mBaseAdapter=baseAdapter;
+    }
+    public void setSuggetionsBaseAdapter(List<String> list,String querystr){
+        if(mBaseAdapter==null){//没有就new一个默认的
+            mBaseAdapter=new SuggestinRecyclerAdapter(list,mContext);
+            suggestionType=SUG_BASE;
+            suggestion_rcy.setAdapter(mBaseAdapter);
+        }else{
+            mBaseAdapter.updateDates(list);
+            mBaseAdapter.setQueryString(querystr);
+            suggestion_rcy.setAdapter(mBaseAdapter);
+        }
+        showSuggestions();
     }
 
 
-    public void setSuggestionsAdapter() {
+    /**
+     * 会话和消息的suggestionItem点击事件
+     *
+     * @param inf
+     */
+    public void setSuggestionItemOnClcikListener(SuggesstionAdapterInf inf) {
+        if(suggestionType==SUG_BASE){
+            mBaseAdapter.setSuggesstionAdapterInf(inf);
+        }else if(suggestionType==SUG_CURSOR){
+            ((SuggestionAdapter) mAdapter).setSuggestionAdapterInf(inf);
+        }
+
+    }
+
+
+    /**
+     * 外部自己实现的adapter
+     *
+     * @param suggestionsAdapter
+     */
+    public void setSuggestionsAdapter(CursorRecyclerAdapter suggestionsAdapter) {
+        suggestionType=SUG_CURSOR;
+        mAdapter = suggestionsAdapter;
     }
 
     /**
@@ -385,9 +453,17 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
      * 显示建议列表
      */
     public void showSuggestions() {
-        if (mAdapter != null && mAdapter.getItemCount() > 0 && suggestion_rcy.getVisibility() == GONE) {
-            suggestion_rcy.setVisibility(VISIBLE);
+
+        if(suggestionType==SUG_BASE){
+            if (mBaseAdapter != null && mBaseAdapter.getItemCount() > 0 && suggestion_rcy.getVisibility() == GONE) {
+                suggestion_rcy.setVisibility(VISIBLE);
+            }
+        }else{
+            if (mAdapter != null && mAdapter.getItemCount() > 0 && suggestion_rcy.getVisibility() == GONE) {
+                suggestion_rcy.setVisibility(VISIBLE);
+            }
         }
+
     }
 
     /**
@@ -471,7 +547,7 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
      *
      * @return
      */
-    private boolean isSearchOpen() {
+    public boolean isSearchOpen() {
         return mIsSearchOpen;
     }
 
@@ -545,6 +621,11 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
                 break;
             case R.id.action_empty_btn:
                 searchEditText.setText(null);
+                if(suggestionType==SUG_CURSOR){
+                    mAdapter.changeCursor(null);
+                }else if(suggestionType==SUG_BASE){
+                    mBaseAdapter.clearData();
+                }
                 break;
             case R.id.action_voice_btn://语音转文字
                 break;
@@ -583,6 +664,7 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
         InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.showSoftInput(view, 0);
     }
+
     /**
      * searchView的内容监听变化
      */
@@ -619,4 +701,51 @@ public class MyMaterialSearchView extends FrameLayout implements Filter.FilterLi
 
         void onSearchViewClosed();
     }
+
+
+//    public void speechToText(int type) {
+//        if (CommonConfig.getUseChineseSpeech( mContext.getApplicationContext())) {
+//            if (!ChineseSpeechUtils.getInstance( mContext.getApplicationContext())
+//                    .checkPackage()) {
+//                ChineseSpeechUtils
+//                        .showDownloadPluginAlert( mContext);
+//            } else {
+//                // ChineseSpeechUtils.startRecognize(ComposeMessageActivity.this,
+//                // REQ_CODE_CHINESE_SPEECH_RECOGNIZE);
+//                ChineseSpeechUtils.startRecognizeForFullEditor(
+//                        mContext,
+//                        REQ_CODE_CHINESE_SPEECH_RECOGNIZE, type);
+//            }
+//        } else {
+//            if (CommonUtil.isRecognizExist( mContext)) {
+//
+//                Intent intent = new Intent(
+//                        RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+//                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+//                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+//                intent.putExtra(RecognizerIntent.EXTRA_PROMPT,
+//                        mContext.getString(R.string.recognition_prompt_text));
+//
+//                PendingIntent pi = PendingIntent.getBroadcast(
+//                        mContext,
+//                        VOICE_RECOGNITION_REQUEST_CODE,
+//                        new Intent(mContext,
+//                                RecgReceiver.class), 0);
+//
+//                intent.putExtra(RecognizerIntent.EXTRA_RESULTS_PENDINGINTENT,
+//                        pi);
+//                Bundle bd = new Bundle();
+//                bd.putInt(CommonConfig.TAG_RECONGNIZER_ACT, type);
+//
+//                intent.putExtra(
+//                        RecognizerIntent.EXTRA_RESULTS_PENDINGINTENT_BUNDLE, bd);
+//                isRecg = true;
+//                mContext.startActivity(intent);
+//
+//            } else {
+//                CommonUtil.showAlertMessage(
+//                        mContext.getString(R.string.recognizer_not_present), mContext);
+//            }
+//        }
+//    }
 }
